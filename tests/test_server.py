@@ -97,6 +97,17 @@ class ServerTests(ServerCase):
         self.assertEqual(self.call("POST", "/api/add", body, {"Origin": f"http://localhost:{self.port}"})[0], 200)
         self.assertEqual(self.call("POST", "/api/add", body)[0], 200)  # no Origin header: allowed
 
+    def test_pomodoro_endpoints(self):
+        iid = self.call("POST", "/api/add", {"title": "x"})[1]["id"]
+        st, t = self.call("POST", "/api/pomodoro/start", {"item_id": iid})
+        self.assertEqual((st, t["running"], t["kind"], t["item_title"]), (200, True, "focus", "x"))
+        self.assertTrue(self.call("GET", "/api/pomodoro/status")[1]["running"])
+        self.assertEqual(self.call("GET", "/api/items")[1]["timer"]["id"], t["id"])
+        t = self.call("POST", "/api/pomodoro/stop", {})[1]
+        self.assertFalse(t["running"])
+        self.assertEqual(self.call("POST", "/api/pomodoro/start", {"item_id": "bad"})[0], 400)
+        self.assertEqual(self.call("POST", "/api/pomodoro/start", {"kind": "break"})[1]["planned_min"], 5)
+
     def test_body_limit(self):
         big = json.dumps({"title": "x" * (MAX_BODY + 10)})
         self.assertEqual(self.call("POST", "/api/add", raw=big)[0], 413)

@@ -160,6 +160,28 @@ def cmd_demo(ctx, a):
     return serve(ctx, a.port or ctx.cfg["general"]["port"])
 
 
+def pomo_line(st):
+    t = st["today"]
+    tail = f"today: {t['completed']} pomodoros, {t['focus_min']} min focus"
+    if not st["running"]:
+        return "idle; " + tail
+    m, sec = divmod(st["remaining_s"], 60)
+    what = f" on {short(st['item_title'], 50)}" if st.get("item_title") else ""
+    return f"{st['kind']} {m:02d}:{sec:02d} left{what}; " + tail
+
+
+def cmd_pomo(ctx, a):
+    from . import pomodoro
+    if a.action == "start":
+        item_id = ctx.ref(a.ref) if a.ref else None
+        pomodoro.start(ctx.db, ctx.cfg, ctx.now, item_id=item_id, kind="break" if a.brk else "focus")
+    elif a.action == "stop":
+        if pomodoro.stop(ctx.db, ctx.now) is None:
+            print("no timer running")
+    print(pomo_line(pomodoro.status(ctx.db, ctx.cfg, ctx.now)))
+    return 0
+
+
 def cmd_sync(ctx, a):
     from .sync import run_sync
     res = run_sync(ctx.db, ctx.cfg, ctx.get_http(), ctx.env, ctx.now)
@@ -170,7 +192,7 @@ def cmd_sync(ctx, a):
     return 0 if all(r["ok"] for r in res.values()) else 1
 
 
-HANDLERS = {"sync": cmd_sync, "serve": cmd_serve, "demo": cmd_demo, "init": cmd_init, "list": cmd_list, "add": cmd_add, "done": cmd_done, "snooze": cmd_snooze,
+HANDLERS = {"pomo": cmd_pomo, "sync": cmd_sync, "serve": cmd_serve, "demo": cmd_demo, "init": cmd_init, "list": cmd_list, "add": cmd_add, "done": cmd_done, "snooze": cmd_snooze,
             "set": cmd_set}
 
 
@@ -180,6 +202,10 @@ def build_parser():
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("init", help="write the example config")
     sub.add_parser("sync", help="pull from all enabled sources")
+    s = sub.add_parser("pomo", help="pomodoro timer: start [ref] | stop | status")
+    s.add_argument("action", choices=["start", "stop", "status"])
+    s.add_argument("ref", nargs="?")
+    s.add_argument("--break", dest="brk", action="store_true", help="start a break instead of focus")
     s = sub.add_parser("serve", help="serve the web page")
     s.add_argument("--port", type=int)
     s = sub.add_parser("demo", help="rebuild the demo database from fixtures and serve it")
