@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "workdesk"
+version = "0.1.0"
+description = "Personal work dashboard: Jira, GitHub, Slack and manual tasks ranked by urgency and importance"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+workdesk = "workdesk.cli:main"
+
+[tool.setuptools]
+packages = ["workdesk", "workdesk.collectors"]
+
+[tool.setuptools.package-data]
+workdesk = ["fixtures/*.json", "static/*.html"]
