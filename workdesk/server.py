@@ -7,6 +7,7 @@ from urllib.parse import urlsplit, parse_qs
 
 from . import pomodoro
 from .db import DbError
+from .planner import PlannerError
 from .models import KINDS, parse_level, utcnow, iso
 from .scoring import rank_items
 
@@ -225,7 +226,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, fn(ctx, body, parse_qs(parts.query)))
         except ApiError as e:
             self.reply(e.status, {"error": str(e)})
-        except (DbError, ValueError) as e:
+        except (DbError, ValueError, PlannerError) as e:
             self.reply(400, {"error": str(e)})
         except Exception as e:  # never leak details or tokens
             self.reply(500, {"error": "internal error: " + type(e).__name__})

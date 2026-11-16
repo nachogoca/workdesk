@@ -5,7 +5,9 @@ import sys
 from datetime import timedelta
 
 from . import config as cfgmod
+from .collectors.base import ConfigError
 from .db import Database, DbError
+from .planner import PlannerError
 from .models import utcnow, iso, local_date, parse_level, KINDS
 from .scoring import rank_items
 
@@ -18,6 +20,15 @@ class Ctx:
     @property
     def day(self):
         return local_date(self.now, self.cfg["general"]["timezone"]).isoformat()
+
+    @property
+    def calendar(self):
+        """GoogleCalendar when enabled, else None (planner then uses working hours only)."""
+        if self._cal is None and self.cfg["calendar"]["enabled"]:
+            from .collectors.gcal import GoogleCalendar, MemoryTokenStore
+            store = MemoryTokenStore({"refresh_token": "demo-refresh"}) if self.demo else None
+            self._cal = GoogleCalendar(self.cfg["calendar"], self.get_http(), self.env, store)
+        return self._cal
 
     def get_http(self):
         if self.http is None:
@@ -154,6 +165,8 @@ def cmd_demo(ctx, a):
     due = (local_date(ctx.now, ctx.cfg["general"]["timezone"]) + timedelta(days=5)).isoformat()
     ctx.db.add_manual("Prepare notes for the sprint demo", ctx.now, due=ctx.day, importance=85, estimate=60)
     ctx.db.add_manual("Book dentist appointment", ctx.now, due=due, estimate=25)
+    from . import planner
+    planner.plan(ctx.db, ctx.cfg, ctx.day, ctx.calendar, ctx.now)
     print("demo database rebuilt: " + ", ".join(f"{n} {r['count']}" for n, r in res.items()) + ", 2 manual tasks")
     if a.no_serve:
         return 0
@@ -182,6 +195,70 @@ def cmd_pomo(ctx, a):
     return 0
 
 
+def hhmm(ts, tz):
+    from zoneinfo import ZoneInfo
+    from .models import parse_iso
+    return parse_iso(ts).astimezone(ZoneInfo(tz)).strftime("%H:%M")
+
+
+def block_line(b, tz):
+    return f"  [{b['id']}] {hhmm(b['start'], tz)}-{hhmm(b['end'], tz)} {short(b['title'], 50)} ({b['status']})"
+
+
+def cmd_plan(ctx, a):
+    from . import planner
+    day = a.day or ctx.day
+    if a.day:
+        from datetime import date
+        date.fromisoformat(a.day)
+    tz, cal = ctx.cfg["general"]["timezone"], ctx.calendar
+    rc = 0
+    existing = [b for b in planner.day_view(ctx.db, ctx.cfg, day, cal, ctx.now)["blocks"]
+                if b["status"] == "proposed"]
+    if not (a.accept and existing):
+        planner.plan(ctx.db, ctx.cfg, day, cal, ctx.now)
+    if a.accept:
+        blocks = [b for b in planner.day_view(ctx.db, ctx.cfg, day, cal, ctx.now)["blocks"]
+                  if b["status"] == "proposed"]
+        if a.accept != "all":
+            want = {int(x) for x in a.accept.replace(" ", "").split(",") if x}
+            blocks = [b for b in blocks if b["id"] in want]
+            for missing in sorted(want - {b["id"] for b in blocks}):
+                print(f"error: block {missing} is not a proposed block for {day}", file=sys.stderr)
+                rc = 1
+        for b in blocks:
+            try:
+                planner.accept(ctx.db, ctx.cfg, b["id"], cal, ctx.now)
+            except planner.PlannerError as e:
+                print("error: " + str(e), file=sys.stderr)
+                rc = 1
+    view = planner.day_view(ctx.db, ctx.cfg, day, cal, ctx.now)
+    print(f"{day}: {len(view['meetings'])} meetings ({view['meeting_min'] / 60:.1f}h), "
+          f"{view['free_focus_min'] / 60:.1f}h free focus" + ("" if view["calendar_enabled"] else " (calendar off)"))
+    if view["calendar_error"]:
+        print("calendar: " + view["calendar_error"])
+    for m in view["meetings"]:
+        print(f"  {hhmm(m['start'], tz)}-{hhmm(m['end'], tz)} meeting: {short(m['title'], 50)}")
+    for b in view["blocks"]:
+        if b["status"] != "rejected":
+            print(block_line(b, tz))
+    if a.ics:
+        text, n = planner.to_ics(ctx.db, day, ctx.now)
+        with open(a.ics, "w", newline="") as f:
+            f.write(text)
+        print(f"wrote {n} accepted blocks to {a.ics}")
+    return rc
+
+
+def cmd_auth(ctx, a):
+    from .collectors.base import ConfigError
+    if not ctx.cfg["calendar"]["enabled"]:
+        raise ConfigError("calendar is disabled: set enabled = true in [calendar]")
+    ctx.calendar.authorize()
+    print("google authorisation stored")
+    return 0
+
+
 def cmd_sync(ctx, a):
     from .sync import run_sync
     res = run_sync(ctx.db, ctx.cfg, ctx.get_http(), ctx.env, ctx.now)
@@ -192,7 +269,7 @@ def cmd_sync(ctx, a):
     return 0 if all(r["ok"] for r in res.values()) else 1
 
 
-HANDLERS = {"pomo": cmd_pomo, "sync": cmd_sync, "serve": cmd_serve, "demo": cmd_demo, "init": cmd_init, "list": cmd_list, "add": cmd_add, "done": cmd_done, "snooze": cmd_snooze,
+HANDLERS = {"plan": cmd_plan, "auth": cmd_auth, "pomo": cmd_pomo, "sync": cmd_sync, "serve": cmd_serve, "demo": cmd_demo, "init": cmd_init, "list": cmd_list, "add": cmd_add, "done": cmd_done, "snooze": cmd_snooze,
             "set": cmd_set}
 
 
@@ -206,6 +283,12 @@ def build_parser():
     s.add_argument("action", choices=["start", "stop", "status"])
     s.add_argument("ref", nargs="?")
     s.add_argument("--break", dest="brk", action="store_true", help="start a break instead of focus")
+    s = sub.add_parser("plan", help="propose (and optionally accept) focus blocks")
+    s.add_argument("--day", help="YYYY-MM-DD (default today)")
+    s.add_argument("--accept", help="'all' or comma-separated block ids")
+    s.add_argument("--ics", help="write accepted blocks of the day to this .ics file")
+    s = sub.add_parser("auth", help="authorise an external service")
+    s.add_argument("service", choices=["google"])
     s = sub.add_parser("serve", help="serve the web page")
     s.add_argument("--port", type=int)
     s = sub.add_parser("demo", help="rebuild the demo database from fixtures and serve it")
@@ -245,7 +328,7 @@ def main(argv=None, env=None, http=None, now=None):
     try:
         ctx = build_ctx(args, env, http, now)
         return HANDLERS[args.cmd](ctx, args) or 0
-    except (DbError, ValueError) as e:
+    except (DbError, ValueError, ConfigError, PlannerError) as e:
         print("error: " + str(e), file=sys.stderr)
         return 1
     finally:

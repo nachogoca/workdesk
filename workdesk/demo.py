@@ -1,4 +1,5 @@
 """Fixture-backed HTTP and demo mode (no tokens needed)."""
+import itertools
 import json
 import os
 import re
@@ -44,7 +45,11 @@ def shift_value(v, days):
 
 def routes():
     """(regex, target) table; target is a fixture file name, a dict/list, an Exception or a callable."""
+    counter = itertools.count(1)
     return [
+        (r"^POST https://oauth2\.googleapis\.com/token", "gcal_token.json"),
+        (r"^POST .*/calendars/[^/]+/events$", lambda call: {"id": f"demo-event-{next(counter)}"}),
+        (r"^GET .*/calendars/[^/]+/events\?", "gcal_events.json"),
         (r"/rest/api/3/myself", "jira_myself.json"),
         (r"/rest/api/3/search/jql.*nextPageToken=tok2", "jira_search_2.json"),
         (r"/rest/api/3/search/jql", "jira_search_1.json"),

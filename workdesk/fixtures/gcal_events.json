@@ -1,0 +1,98 @@
+{
+ "items": [
+  {
+   "id": "e1",
+   "summary": "Team standup",
+   "start": {
+    "dateTime": "2026-01-15T09:00:00Z"
+   },
+   "end": {
+    "dateTime": "2026-01-15T09:15:00Z"
+   },
+   "status": "confirmed",
+   "attendees": [
+    {
+     "self": true,
+     "responseStatus": "accepted"
+    }
+   ]
+  },
+  {
+   "id": "e2",
+   "summary": "Design review",
+   "start": {
+    "dateTime": "2026-01-15T13:00:00Z"
+   },
+   "end": {
+    "dateTime": "2026-01-15T14:00:00Z"
+   },
+   "status": "confirmed"
+  },
+  {
+   "id": "e3",
+   "summary": "Declined sync",
+   "start": {
+    "dateTime": "2026-01-15T10:00:00Z"
+   },
+   "end": {
+    "dateTime": "2026-01-15T11:00:00Z"
+   },
+   "status": "confirmed",
+   "attendees": [
+    {
+     "self": true,
+     "responseStatus": "declined"
+    }
+   ]
+  },
+  {
+   "id": "e4",
+   "summary": "Company holiday",
+   "start": {
+    "date": "2026-01-15"
+   },
+   "end": {
+    "date": "2026-01-16"
+   }
+  },
+  {
+   "id": "e5",
+   "summary": "Focus: earlier block",
+   "start": {
+    "dateTime": "2026-01-15T14:30:00Z"
+   },
+   "end": {
+    "dateTime": "2026-01-15T15:30:00Z"
+   },
+   "status": "confirmed",
+   "extendedProperties": {
+    "private": {
+     "workdesk": "1"
+    }
+   }
+  },
+  {
+   "id": "e6",
+   "summary": "Lunch walk",
+   "start": {
+    "dateTime": "2026-01-15T11:30:00Z"
+   },
+   "end": {
+    "dateTime": "2026-01-15T12:30:00Z"
+   },
+   "status": "confirmed",
+   "transparency": "transparent"
+  },
+  {
+   "id": "e7",
+   "summary": "Cancelled thing",
+   "start": {
+    "dateTime": "2026-01-15T15:30:00Z"
+   },
+   "end": {
+    "dateTime": "2026-01-15T16:00:00Z"
+   },
+   "status": "cancelled"
+  }
+ ]
+}

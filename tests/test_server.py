@@ -108,6 +108,19 @@ class ServerTests(ServerCase):
         self.assertEqual(self.call("POST", "/api/pomodoro/start", {"item_id": "bad"})[0], 400)
         self.assertEqual(self.call("POST", "/api/pomodoro/start", {"kind": "break"})[1]["planned_min"], 5)
 
+    def test_plan_and_blocks(self):
+        self.call("POST", "/api/add", {"title": "Plan me", "due": "2026-01-15", "kind": "do", "importance": "high"})
+        st, v = self.call("POST", "/api/plan", {})
+        self.assertEqual(st, 200)
+        self.assertEqual(v["day"], "2026-01-15")
+        self.assertEqual(len(v["blocks"]), 1)
+        self.assertEqual(self.call("GET", "/api/plan?day=2026-01-15")[1]["blocks"][0]["status"], "proposed")
+        bid = v["blocks"][0]["id"]
+        self.assertEqual(self.call("POST", "/api/block/accept", {"id": bid})[1]["block"]["status"], "accepted")
+        self.assertEqual(self.call("POST", "/api/block/reject", {"id": bid})[1]["block"]["status"], "rejected")
+        self.assertEqual(self.call("POST", "/api/block/accept", {"id": 999})[0], 400)
+        self.assertEqual(self.call("GET", "/api/plan?day=nope")[0], 400)
+
     def test_body_limit(self):
         big = json.dumps({"title": "x" * (MAX_BODY + 10)})
         self.assertEqual(self.call("POST", "/api/add", raw=big)[0], 413)

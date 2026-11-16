@@ -39,6 +39,21 @@ class CliTests(unittest.TestCase):
         self.assertEqual(self.run_cli("done", "m1")[0], 0)
         self.assertIn("Write report", self.run_cli("list", "--state", "done")[1])
 
+    def test_demo_plan_accept_ics(self):
+        self.env["WORKDESK_DEMO_DB"] = os.path.join(self.tmp.name, "demo.db")
+        ics = os.path.join(self.tmp.name, "out.ics")
+        self.assertEqual(self.run_cli("demo", "--no-serve")[0], 0)
+        code, out, err = self.run_cli("--demo", "plan", "--accept", "all", "--ics", ics)
+        self.assertEqual(code, 0, err)
+        self.assertIn("2 meetings", out)
+        self.assertIn("(accepted)", out)
+        self.assertNotIn("(proposed)", out)
+        with open(ics, newline="") as f:
+            text = f.read()
+        self.assertIn("BEGIN:VEVENT", text)
+        self.assertIn("\r\n", text)
+        self.assertEqual(self.run_cli("--demo", "plan", "--accept", "999")[0], 1)
+
     def test_errors(self):
         code, _, err = self.run_cli("done", "zz9")
         self.assertEqual(code, 1)

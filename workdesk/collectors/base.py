@@ -31,6 +31,10 @@ def parse_query(url):
     return {k: v[0] for k, v in urllib.parse.parse_qs(q).items()}
 
 
+def quote(text):
+    return urllib.parse.quote(text, safe="")
+
+
 def b64(text):
     import base64
     return base64.b64encode(text.encode()).decode()
