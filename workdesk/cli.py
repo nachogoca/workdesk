@@ -35,6 +35,8 @@ def build_ctx(args, env, http, now):
     if getattr(args, "demo", False):
         from . import demo
         cfg, env, http, path = demo.setup(env, http, now)
+        if args.cmd == "demo" and os.path.exists(path):
+            os.remove(path)
         return Ctx(cfg, Database(path), env, http, now, demo=True)
     cfg = cfgmod.load_config(env)
     return Ctx(cfg, Database(cfgmod.db_path(cfg, env)), env, http, now)
@@ -128,6 +130,36 @@ def cmd_set(ctx, a):
     return 0
 
 
+def serve(ctx, port, clock=None):
+    from .server import make_server
+    srv = make_server(ctx, port, clock)
+    print(f"workdesk serving on http://127.0.0.1:{srv.server_address[1]}  (Ctrl-C to stop)", flush=True)
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        srv.server_close()
+    return 0
+
+
+def cmd_serve(ctx, a):
+    return serve(ctx, a.port or ctx.cfg["general"]["port"])
+
+
+def cmd_demo(ctx, a):
+    from datetime import timedelta
+    from .sync import run_sync
+    res = run_sync(ctx.db, ctx.cfg, ctx.get_http(), ctx.env, ctx.now)
+    due = (local_date(ctx.now, ctx.cfg["general"]["timezone"]) + timedelta(days=5)).isoformat()
+    ctx.db.add_manual("Prepare notes for the sprint demo", ctx.now, due=ctx.day, importance=85, estimate=60)
+    ctx.db.add_manual("Book dentist appointment", ctx.now, due=due, estimate=25)
+    print("demo database rebuilt: " + ", ".join(f"{n} {r['count']}" for n, r in res.items()) + ", 2 manual tasks")
+    if a.no_serve:
+        return 0
+    return serve(ctx, a.port or ctx.cfg["general"]["port"])
+
+
 def cmd_sync(ctx, a):
     from .sync import run_sync
     res = run_sync(ctx.db, ctx.cfg, ctx.get_http(), ctx.env, ctx.now)
@@ -138,7 +170,7 @@ def cmd_sync(ctx, a):
     return 0 if all(r["ok"] for r in res.values()) else 1
 
 
-HANDLERS = {"sync": cmd_sync, "init": cmd_init, "list": cmd_list, "add": cmd_add, "done": cmd_done, "snooze": cmd_snooze,
+HANDLERS = {"sync": cmd_sync, "serve": cmd_serve, "demo": cmd_demo, "init": cmd_init, "list": cmd_list, "add": cmd_add, "done": cmd_done, "snooze": cmd_snooze,
             "set": cmd_set}
 
 
@@ -148,6 +180,11 @@ def build_parser():
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("init", help="write the example config")
     sub.add_parser("sync", help="pull from all enabled sources")
+    s = sub.add_parser("serve", help="serve the web page")
+    s.add_argument("--port", type=int)
+    s = sub.add_parser("demo", help="rebuild the demo database from fixtures and serve it")
+    s.add_argument("--port", type=int)
+    s.add_argument("--no-serve", action="store_true")
     s = sub.add_parser("list", help="list items by rank")
     s.add_argument("--state", default="open", choices=["open", "done", "snoozed", "closed"])
     s.add_argument("--kind", choices=KINDS)
@@ -177,6 +214,8 @@ def main(argv=None, env=None, http=None, now=None):
     except SystemExit as e:
         return e.code if isinstance(e.code, int) else 2
     ctx = None
+    if args.cmd == "demo":
+        args.demo = True
     try:
         ctx = build_ctx(args, env, http, now)
         return HANDLERS[args.cmd](ctx, args) or 0

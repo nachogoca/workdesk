@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>workdesk</title>
+<style>
+:root{--bg:#f4f6f9;--fg:#1b2230;--muted:#5b6678;--card:#fff;--line:#d8dee8;--accent:#2457d6;--warn:#a85a00;--bad:#b3261e;--ok:#17743a;--bar:#1b2230;--barfg:#fff;--chip:#e8edf5}
+@media (prefers-color-scheme:dark){:root{--bg:#0f131a;--fg:#e5e9f0;--muted:#97a3b5;--card:#171d27;--line:#2a3343;--accent:#7aaeff;--warn:#f0b35a;--bad:#ff8f87;--ok:#72d391;--bar:#080b10;--barfg:#e5e9f0;--chip:#232c3a}}
+*{box-sizing:border-box}
+body{margin:0;padding:64px 16px 40px;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--accent)}
+#bar{position:fixed;top:0;left:0;right:0;height:48px;background:var(--bar);color:var(--barfg);display:flex;align-items:center;gap:12px;padding:0 16px;z-index:10}
+#bar .time{font:600 20px ui-monospace,monospace;min-width:64px}
+#bar .label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bar .tot{opacity:.8;font-size:12px}
+button,select,input{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+button{cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+#bar button{background:transparent;color:var(--barfg);border-color:#667}
+main{max-width:1100px;margin:0 auto}
+.top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.top form{display:flex;gap:6px;flex:1;min-width:240px}
+.top form input[type=text]{flex:1;min-width:120px}
+.chip{background:var(--chip);border-radius:12px;padding:2px 10px;font-size:12px}
+.chip.err{color:var(--bad);border:1px solid var(--bad)}
+h2{font-size:15px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+h3{font-size:13px;margin:0 0 6px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.card.nudge{border-color:var(--warn)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.title{font-weight:600;flex:1;min-width:160px}
+.badge{font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px;background:var(--chip);text-transform:uppercase}
+.badge.jira{color:#2457d6}.badge.github{color:var(--ok)}.badge.slack{color:#a3336b}.badge.manual{color:var(--warn)}
+.meta{color:var(--muted);font-size:12px}
+.rank{font:600 12px ui-monospace,monospace;color:var(--muted)}
+.ctl{margin-top:6px;font-size:12px}
+.ctl label{display:inline-flex;gap:4px;align-items:center;color:var(--muted)}
+.ctl input[type=number]{width:60px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+.quad{background:transparent}
+.empty{color:var(--muted);font-style:italic}
+.tl{display:grid;grid-template-columns:110px 1fr auto;gap:6px 10px;align-items:center}
+.tl .meeting{color:var(--muted)}
+.status-proposed{color:var(--warn)}.status-accepted{color:var(--ok)}.status-rejected{color:var(--muted);text-decoration:line-through}
+#flash{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:var(--bad);color:#fff;padding:6px 14px;border-radius:6px;display:none;z-index:20}
+</style>
+</head>
+<body>
+<div id="bar">
+  <span class="time" id="time">--:--</span>
+  <span class="label" id="tlabel">Idle. Start a pomodoro on any item.</span>
+  <span class="tot" id="ttot"></span>
+  <button id="tstop" hidden>Stop</button>
+</div>
+<main>
+  <div class="top">
+    <form id="addform">
+      <input type="text" id="addtitle" placeholder="Add a manual task..." maxlength="300" aria-label="New task title">
+      <input type="date" id="adddue" aria-label="Due date">
+      <select id="addkind" aria-label="Kind"><option>do</option><option>respond</option><option>review</option><option>waiting</option></select>
+      <button class="primary" type="submit">Add</button>
+    </form>
+    <button id="syncbtn">Sync now</button>
+    <span id="chips" class="row"></span>
+  </div>
+  <section><h2>Now</h2><div id="now"></div></section>
+  <section><h2>Reply and review</h2><div id="reply"></div></section>
+  <section><h2>Do</h2><div class="grid" id="do"></div></section>
+  <section><h2>Waiting</h2><div id="waiting"></div></section>
+  <section><h2>Today</h2><div id="today"></div></section>
+</main>
+<div id="flash" role="alert"></div>
+<script>
+"use strict";
+const SAFE = /^https?:\/\//i;
+const state = {data: null, plan: null, timer: null, finishing: false, audio: null};
+
+function h(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  if (props) for (const k of Object.keys(props)) {
+    const v = props[k];
+    if (v === null || v === undefined || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "value") e.value = v;
+    else e.setAttribute(k, v === true ? "" : String(v));
+  }
+  for (const kid of kids.flat()) {
+    if (kid === null || kid === undefined || kid === false) continue;
+    e.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+  }
+  return e;
+}
+function link(url, text, cls) {
+  if (typeof url === "string" && SAFE.test(url)) {
+    return h("a", {href: url, class: cls, target: "_blank", rel: "noopener noreferrer"}, text);
+  }
+  return h("span", {class: cls}, text);
+}
+function flash(msg) {
+  const f = document.getElementById("flash");
+  f.textContent = msg; f.style.display = "block";
+  setTimeout(() => { f.style.display = "none"; }, 4000);
+}
+async function api(path, body) {
+  const opt = body === undefined ? {} : {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)};
+  const r = await fetch("/api/" + path, opt);
+  let j = {};
+  try { j = await r.json(); } catch (e) { j = {error: "bad response"}; }
+  if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+async function act(fn) {
+  try { await fn(); } catch (e) { flash(e.message || String(e)); }
+}
+function age(iso) {
+  if (!iso) return "";
+  const s = (Date.now() - Date.parse(iso)) / 1000;
+  if (s < 3600) return Math.max(1, Math.round(s / 60)) + "m";
+  if (s < 172800) return Math.round(s / 3600) + "h";
+  return Math.round(s / 86400) + "d";
+}
+function hhmm(iso) {
+  return new Date(iso).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+}
+
+// ---- item card -------------------------------------------------------
+const LEVELS = [["auto", "Auto"], ["85", "High 85"], ["55", "Medium 55"], ["25", "Low 25"]];
+function levelSelect(it, field) {
+  const cur = it[field + "_override"];
+  const sel = h("select", {"aria-label": field});
+  const opts = LEVELS.slice();
+  if (cur !== null && cur !== undefined && ![85, 55, 25].includes(cur)) opts.push([String(cur), "Custom " + cur]);
+  for (const [v, t] of opts) sel.append(h("option", {value: v}, t));
+  sel.value = cur === null || cur === undefined ? "auto" : String(cur);
+  sel.addEventListener("change", () => act(async () => {
+    await api("override", {id: it.id, field, value: sel.value === "auto" ? null : Number(sel.value)});
+    await load();
+  }));
+  return sel;
+}
+function itemCard(it) {
+  const pomo = it.pomo || {count: 0, minutes: 0};
+  const meta = [it.requester, it.status, it.due ? "due " + it.due : null, it.updated_at ? "active " + age(it.updated_at) + " ago" : null]
+    .filter(Boolean).join(" · ");
+  const est = h("input", {type: "number", min: 1, max: 1440, value: it.estimate_min, "aria-label": "estimate in minutes"});
+  est.addEventListener("change", () => act(async () => { await api("estimate", {id: it.id, minutes: Number(est.value)}); await load(); }));
+  const snooze = d => () => act(async () => { await api("state", {id: it.id, state: "snoozed", days: d}); await load(); });
+  return h("div", {class: "card" + (it.nudge ? " nudge" : "")},
+    h("div", {class: "row"},
+      h("span", {class: "badge " + it.source}, it.source),
+      link(it.url, it.title, "title"),
+      h("span", {class: "rank", title: "rank = 0.6 urgency + 0.4 importance"}, it.rank.toFixed(1)),
+      h("span", {class: "badge"}, it.alias || "")),
+    h("div", {class: "meta"}, meta),
+    h("div", {class: "meta"}, "urgency " + it.urgency + " (" + it.urgency_reason + ") · importance " + it.importance + " (" + it.importance_reason + ")"),
+    h("div", {class: "ctl row"},
+      h("label", null, "Importance", levelSelect(it, "importance")),
+      h("label", null, "Urgency", levelSelect(it, "urgency")),
+      h("label", null, "Estimate", est, "min"),
+      h("span", {class: "meta"}, pomo.count + " pomodoros, " + pomo.minutes + " min"),
+      h("button", {onclick: () => startPomodoro(it.id)}, "Start pomodoro"),
+      h("button", {onclick: snooze(1)}, "Snooze 1d"),
+      h("button", {onclick: snooze(7)}, "Snooze 1w"),
+      h("button", {onclick: () => act(async () => { await api("state", {id: it.id, state: "done"}); await load(); })}, "Done")));
+}
+function fill(id, items, emptyText) {
+  const box = document.getElementById(id);
+  box.replaceChildren(...(items.length ? items.map(itemCard) : [h("div", {class: "empty"}, emptyText)]));
+}
+function renderItems() {
+  const items = state.data.items;
+  const byRank = items.slice().sort((a, b) => b.rank - a.rank);
+  fill("now", byRank.filter(i => i.kind !== "waiting").slice(0, 5), "Nothing open.");
+  const reply = items.filter(i => i.kind === "respond" || i.kind === "review")
+    .sort((a, b) => (a.updated_at || "").localeCompare(b.updated_at || ""));
+  fill("reply", reply, "Nothing waiting on you.");
+  const doBox = document.getElementById("do");
+  const quads = [["do_now", "Do now (urgent, important)"], ["schedule", "Schedule (important)"], ["quick", "Quick (urgent)"], ["later", "Later"]];
+  doBox.replaceChildren(...quads.map(([q, name]) => {
+    const list = byRank.filter(i => i.kind === "do" && i.quadrant === q);
+    return h("div", {class: "quad"}, h("h3", null, name + " (" + list.length + ")"),
+      ...(list.length ? list.map(itemCard) : [h("div", {class: "empty"}, "empty")]));
+  }));
+  fill("waiting", byRank.filter(i => i.kind === "waiting"), "Not waiting on anything.");
+}
+function renderChips() {
+  const box = document.getElementById("chips");
+  const out = [];
+  for (const [name, s] of Object.entries(state.data.sources)) {
+    if (!s.enabled) continue;
+    const txt = s.ok === false ? name + ": " + s.error : name + (s.at ? ": synced " + age(s.at) + " ago" : ": never synced");
+    out.push(h("span", {class: "chip" + (s.ok === false ? " err" : "")}, txt));
+  }
+  if (!out.length) out.push(h("span", {class: "chip"}, "no sources enabled (manual tasks only)"));
+  box.replaceChildren(...out);
+}
+
+// ---- today / planner ---------------------------------------------------
+function renderToday() {
+  const p = state.plan, box = document.getElementById("today");
+  if (!p) { box.replaceChildren(h("div", {class: "empty"}, "No plan loaded.")); return; }
+  const rows = [];
+  for (const m of p.meetings) rows.push({start: m.start, end: m.end, kind: "meeting", title: m.title});
+  for (const b of p.blocks) if (b.status !== "rejected") rows.push({start: b.start, end: b.end, kind: "block", b});
+  rows.sort((a, b) => a.start.localeCompare(b.start));
+  const head = h("div", {class: "row"},
+    h("span", {class: "meta"}, p.day + ": " + p.meetings.length + " meetings (" + (p.meeting_min / 60).toFixed(1) + " h), " + (p.free_focus_min / 60).toFixed(1) + " h free for focus" + (p.calendar_enabled ? "" : " (calendar off: working hours only)")),
+    h("button", {onclick: () => act(async () => { state.plan = await api("plan", {day: p.day}); renderToday(); })}, "Re-plan"));
+  const grid = h("div", {class: "tl"});
+  for (const r of rows) {
+    const t = hhmm(r.start) + " - " + hhmm(r.end);
+    if (r.kind === "meeting") {
+      grid.append(h("span", {class: "meeting"}, t), h("span", {class: "meeting"}, "Meeting: " + r.title), h("span"));
+    } else {
+      const b = r.b;
+      const btns = h("span");
+      if (b.status === "proposed") {
+        btns.append(
+          h("button", {class: "primary", onclick: () => act(async () => { await api("block/accept", {id: b.id}); await reloadPlan(); })}, "Accept"),
+          " ",
+          h("button", {onclick: () => act(async () => { await api("block/reject", {id: b.id}); await reloadPlan(); })}, "Reject"));
+      }
+      grid.append(h("span", null, t), h("span", null, "Focus: " + b.title + " ", h("span", {class: "status-" + b.status}, "[" + b.status + "]")), btns);
+    }
+  }
+  const kids = [head];
+  if (p.calendar_error) kids.push(h("div", {class: "meta", style: "color:var(--bad)"}, "Calendar: " + p.calendar_error));
+  kids.push(rows.length ? grid : h("div", {class: "empty"}, "No meetings or blocks. Press Re-plan to propose focus blocks."));
+  box.replaceChildren(...kids);
+}
+async function reloadPlan() { state.plan = await api("plan"); renderToday(); }
+
+// ---- pomodoro ------------------------------------------------------------
+function beep() {
+  try {
+    const ctx = state.audio || new (window.AudioContext || window.webkitAudioContext)();
+    state.audio = ctx;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880; g.gain.value = 0.15;
+    o.start(); o.stop(ctx.currentTime + 0.4);
+  } catch (e) { /* audio is optional */ }
+}
+function notify(msg) {
+  try { if ("Notification" in window && Notification.permission === "granted") new Notification("workdesk", {body: msg}); } catch (e) { /* optional */ }
+}
+function primeAudioAndNotifications() {
+  try {
+    if (!state.audio && (window.AudioContext || window.webkitAudioContext)) state.audio = new (window.AudioContext || window.webkitAudioContext)();
+    if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+  } catch (e) { /* optional */ }
+}
+async function startPomodoro(itemId) {
+  primeAudioAndNotifications();
+  await act(async () => { state.timer = await api("pomodoro/start", {item_id: itemId}); renderBar(); await load(); });
+}
+function fmt(sec) {
+  sec = Math.max(0, Math.round(sec));
+  return String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
+}
+function renderBar() {
+  const t = state.timer, time = document.getElementById("time"), label = document.getElementById("tlabel");
+  const stop = document.getElementById("tstop"), tot = document.getElementById("ttot");
+  if (t && t.today) tot.textContent = "Today: " + t.today.completed + " pomodoros, " + t.today.focus_min + " min";
+  if (!t || !t.running) {
+    time.textContent = "--:--"; label.textContent = "Idle. Start a pomodoro on any item."; stop.hidden = true;
+    document.title = "workdesk";
+    return;
+  }
+  const left = (Date.parse(t.ends_at) - Date.now()) / 1000;
+  time.textContent = fmt(left);
+  label.textContent = (t.kind === "break" ? "Break" : "Focus") + (t.item_title ? ": " + t.item_title : "");
+  stop.hidden = false;
+  document.title = fmt(left) + " " + (t.kind === "break" ? "break" : "focus") + " - workdesk";
+}
+async function onTimerEnd(t) {
+  if (state.finishing) return;
+  state.finishing = true;
+  try {
+    beep();
+    notify(t.kind === "break" ? "Break over." : "Pomodoro finished. Time for a break.");
+    state.timer = await api("pomodoro/status");
+    if (t.kind === "focus") state.timer = await api("pomodoro/start", {kind: "break"});
+    renderBar();
+    await load();
+  } catch (e) { flash(e.message); } finally { state.finishing = false; }
+}
+function tick() {
+  const t = state.timer;
+  if (t && t.running) {
+    if (Date.parse(t.ends_at) - Date.now() <= 0) onTimerEnd(t); else renderBar();
+  }
+}
+async function pollTimer() {
+  try {
+    const t = await api("pomodoro/status");
+    const changed = (state.timer && state.timer.id) !== t.id;
+    state.timer = t; renderBar();
+    if (changed && state.data) await load();
+  } catch (e) { /* offline: keep ticking locally */ }
+}
+
+// ---- load ------------------------------------------------------------------
+async function load() {
+  try {
+    state.data = await api("items");
+    state.timer = state.data.timer;
+    renderItems(); renderChips(); renderBar();
+    state.plan = await api("plan");
+    renderToday();
+  } catch (e) { flash(e.message); }
+}
+document.getElementById("addform").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const title = document.getElementById("addtitle").value.trim();
+  if (!title) return;
+  const due = document.getElementById("adddue").value || null;
+  act(async () => {
+    await api("add", {title, due, kind: document.getElementById("addkind").value});
+    document.getElementById("addtitle").value = ""; document.getElementById("adddue").value = "";
+    await load();
+  });
+});
+document.getElementById("syncbtn").addEventListener("click", () => act(async () => {
+  document.getElementById("syncbtn").disabled = true;
+  try { await api("sync", {}); } finally { document.getElementById("syncbtn").disabled = false; }
+  await load();
+}));
+document.getElementById("tstop").addEventListener("click", () => act(async () => {
+  state.timer = await api("pomodoro/stop", {}); renderBar(); await load();
+}));
+setInterval(tick, 1000);
+setInterval(pollTimer, 15000);
+load();
+</script>
+</body>
+</html>

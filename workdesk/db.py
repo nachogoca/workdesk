@@ -55,6 +55,12 @@ class Database:
     def close(self):
         self.conn.close()
 
+    def __del__(self):
+        try:
+            self.conn.close()
+        except Exception:
+            pass
+
     # generic helpers -------------------------------------------------
     def rows(self, sql, args=()):
         return [dict(r) for r in self.conn.execute(sql, args).fetchall()]
