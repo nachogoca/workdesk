@@ -276,6 +276,43 @@ def cmd_show(ctx, a):
     return 0
 
 
+def explain(name, e):
+    """Short human reason for a failed check; never includes tokens or headers."""
+    from .collectors.base import HttpError
+    from .collectors.slack import SlackError
+    if isinstance(e, ConfigError):
+        return str(e)
+    if isinstance(e, HttpError):
+        return {0: "network error (cannot reach the server)", 401: "401 unauthorised (bad or expired token)",
+                403: "403 forbidden (missing scope or permission)"}.get(e.status, f"HTTP {e.status}")
+    if isinstance(e, SlackError):
+        msg = str(e)
+        if "missing_scope" in msg:
+            return "missing scope: " + msg
+        if any(x in msg for x in ("invalid_auth", "not_authed", "token_revoked", "account_inactive")):
+            return "bad token: " + msg
+        return msg
+    return f"{type(e).__name__}: {e}"
+
+
+def cmd_doctor(ctx, a):
+    from .sync import build_collectors
+    checks = {c.name: c for c in build_collectors(ctx.cfg, ctx.get_http(), ctx.env)}
+    if ctx.cfg["calendar"]["enabled"]:
+        checks["calendar"] = ctx.calendar
+    failed = False
+    for name in ("jira", "github", "slack", "calendar"):
+        if name not in checks:
+            print(f"skip {name}: disabled")
+            continue
+        try:
+            print(f"pass {name}: {checks[name].check()}")
+        except Exception as e:  # report every failure kind as one line
+            failed = True
+            print(f"FAIL {name}: {explain(name, e)}")
+    return 1 if failed else 0
+
+
 def cmd_sync(ctx, a):
     from .sync import run_sync
     res = run_sync(ctx.db, ctx.cfg, ctx.get_http(), ctx.env, ctx.now)
@@ -286,7 +323,7 @@ def cmd_sync(ctx, a):
     return 0 if all(r["ok"] for r in res.values()) else 1
 
 
-HANDLERS = {"today": cmd_today, "show": cmd_show, "plan": cmd_plan, "auth": cmd_auth, "pomo": cmd_pomo, "sync": cmd_sync, "serve": cmd_serve, "demo": cmd_demo, "init": cmd_init, "list": cmd_list, "add": cmd_add, "done": cmd_done, "snooze": cmd_snooze,
+HANDLERS = {"doctor": cmd_doctor, "today": cmd_today, "show": cmd_show, "plan": cmd_plan, "auth": cmd_auth, "pomo": cmd_pomo, "sync": cmd_sync, "serve": cmd_serve, "demo": cmd_demo, "init": cmd_init, "list": cmd_list, "add": cmd_add, "done": cmd_done, "snooze": cmd_snooze,
             "set": cmd_set}
 
 
@@ -311,6 +348,7 @@ def build_parser():
     s.add_argument("--json", action="store_true", help="same content as compact JSON")
     s = sub.add_parser("show", help="full detail of one item (alias or id)")
     s.add_argument("ref")
+    sub.add_parser("doctor", help="one cheap call per enabled source, pass or fail")
     s = sub.add_parser("serve", help="serve the web page")
     s.add_argument("--port", type=int)
     s = sub.add_parser("demo", help="rebuild the demo database from fixtures and serve it")

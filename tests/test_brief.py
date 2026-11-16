@@ -116,7 +116,7 @@ class BriefCliTests(unittest.TestCase):
 
             def run(*a):
                 out = io.StringIO()
-                with contextlib.redirect_stdout(out):
+                with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
                     code = main(list(a), env=env, now=NOW)
                 return code, out.getvalue()
 
