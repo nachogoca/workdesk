@@ -1,0 +1,59 @@
+{
+ "issues": [
+  {
+   "key": "MLP-103",
+   "fields": {
+    "summary": "Payment outage follow-up",
+    "status": {
+     "name": "To Do",
+     "statusCategory": {
+      "key": "new"
+     }
+    },
+    "priority": {
+     "name": "Highest"
+    },
+    "duedate": "2026-01-16",
+    "created": "2026-01-14T09:00:00.000+0100",
+    "updated": "2026-01-14T11:00:00.000+0100",
+    "labels": [
+     "incident"
+    ],
+    "reporter": {
+     "displayName": "Dana Example"
+    },
+    "customfield_10020": null
+   }
+  },
+  {
+   "key": "MLP-104",
+   "fields": {
+    "summary": "Tidy old dashboards",
+    "status": {
+     "name": "To Do",
+     "statusCategory": {
+      "key": "new"
+     }
+    },
+    "priority": {
+     "name": "Low"
+    },
+    "duedate": null,
+    "created": "2025-12-01T09:00:00.000+0100",
+    "updated": "2025-12-20T10:00:00.000+0100",
+    "labels": [],
+    "reporter": {
+     "displayName": "Frank Example"
+    },
+    "customfield_10020": [
+     {
+      "id": 9,
+      "name": "Sprint 9",
+      "state": "closed"
+     }
+    ]
+   }
+  }
+ ],
+ "isLast": true
+}

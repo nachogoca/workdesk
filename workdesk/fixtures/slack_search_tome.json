@@ -1,0 +1,55 @@
+{
+ "ok": true,
+ "messages": {
+  "matches": [
+   {
+    "ts": "1768467600.000100",
+    "user": "U_DANA",
+    "username": "dana",
+    "text": "<@U_ME> can you review the deploy plan?",
+    "channel": {
+     "id": "C_ENG",
+     "name": "eng",
+     "is_im": false
+    },
+    "permalink": "https://acme.slack.com/archives/C_ENG/p1768467600000100"
+   },
+   {
+    "ts": "1768472000.000500",
+    "user": "U_DANA",
+    "username": "dana",
+    "text": "ping when you have a sec",
+    "channel": {
+     "id": "D_DANA",
+     "name": "U_DANA",
+     "is_im": true
+    },
+    "permalink": "https://acme.slack.com/archives/D_DANA/p1768472000000500"
+   },
+   {
+    "ts": "1768474800.000600",
+    "user": "U_BOB",
+    "username": "bob",
+    "text": "thanks!",
+    "channel": {
+     "id": "D_BOB",
+     "name": "U_BOB",
+     "is_im": true
+    },
+    "permalink": "https://acme.slack.com/archives/D_BOB/p1768474800000600"
+   },
+   {
+    "ts": "1768470000.000650",
+    "user": "U_ME",
+    "username": "me",
+    "text": "sent you the doc",
+    "channel": {
+     "id": "D_BOB",
+     "name": "U_BOB",
+     "is_im": true
+    },
+    "permalink": "https://acme.slack.com/archives/D_BOB/p1768470000000650"
+   }
+  ]
+ }
+}

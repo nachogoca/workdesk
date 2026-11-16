@@ -1,0 +1,44 @@
+[
+ {
+  "id": "1",
+  "reason": "mention",
+  "updated_at": "2026-01-15T07:00:00Z",
+  "subject": {
+   "title": "Refactor config loader",
+   "url": "https://api.github.com/repos/acme/api/pulls/45",
+   "type": "PullRequest"
+  },
+  "repository": {
+   "full_name": "acme/api",
+   "html_url": "https://github.com/acme/api"
+  }
+ },
+ {
+  "id": "2",
+  "reason": "comment",
+  "updated_at": "2026-01-15T10:00:00Z",
+  "subject": {
+   "title": "Flaky test in CI",
+   "url": "https://api.github.com/repos/acme/api/issues/7",
+   "type": "PullRequest"
+  },
+  "repository": {
+   "full_name": "acme/api",
+   "html_url": "https://github.com/acme/api"
+  }
+ },
+ {
+  "id": "3",
+  "reason": "subscribed",
+  "updated_at": "2026-01-15T11:00:00Z",
+  "subject": {
+   "title": "Noise",
+   "url": "https://api.github.com/repos/acme/api/issues/99",
+   "type": "PullRequest"
+  },
+  "repository": {
+   "full_name": "acme/api",
+   "html_url": "https://github.com/acme/api"
+  }
+ }
+]

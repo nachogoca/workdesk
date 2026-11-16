@@ -1,0 +1,69 @@
+{
+ "ok": true,
+ "messages": {
+  "matches": [
+   {
+    "ts": "1768467600.000100",
+    "user": "U_DANA",
+    "username": "dana",
+    "text": "<@U_ME> can you review the deploy plan?",
+    "channel": {
+     "id": "C_ENG",
+     "name": "eng",
+     "is_im": false
+    },
+    "permalink": "https://acme.slack.com/archives/C_ENG/p1768467600000100"
+   },
+   {
+    "ts": "1768471200.000200",
+    "user": "U_ERIN",
+    "username": "erin",
+    "text": "<@U_ME> any update on the deploy plan?",
+    "channel": {
+     "id": "C_ENG",
+     "name": "eng",
+     "is_im": false
+    },
+    "permalink": "https://acme.slack.com/archives/C_ENG/p1768471200000200",
+    "thread_ts": "1768467600.000100"
+   },
+   {
+    "ts": "1768460400.000300",
+    "user": "U_BOB",
+    "username": "bob",
+    "text": "<@U_ME> rollout is done, FYI",
+    "channel": {
+     "id": "C_OPS",
+     "name": "ops",
+     "is_im": false
+    },
+    "permalink": "https://acme.slack.com/archives/C_OPS/p1768460400000300",
+    "thread_ts": "1768460400.000300"
+   },
+   {
+    "ts": "1768456800.000700",
+    "user": "U_FRANK",
+    "username": "frank",
+    "text": "<@U_ME> need your input on the budget",
+    "channel": {
+     "id": "C_PRIV",
+     "name": "private-x",
+     "is_im": false
+    },
+    "permalink": "https://acme.slack.com/archives/C_PRIV/p1768456800000700?thread_ts=1768450000.000800&cid=C_PRIV"
+   },
+   {
+    "ts": "1767700800.000900",
+    "user": "U_DANA",
+    "username": "dana",
+    "text": "<@U_ME> old message",
+    "channel": {
+     "id": "C_ENG",
+     "name": "eng",
+     "is_im": false
+    },
+    "permalink": "https://acme.slack.com/archives/C_ENG/p1767700800000900"
+   }
+  ]
+ }
+}

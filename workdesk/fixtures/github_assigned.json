@@ -1,0 +1,37 @@
+{
+ "items": [
+  {
+   "number": 43,
+   "title": "Update footer",
+   "html_url": "https://github.com/acme/web/pull/43",
+   "repository_url": "https://api.github.com/repos/acme/web",
+   "user": {
+    "login": "carol"
+   },
+   "state": "open",
+   "created_at": "2026-01-10T09:00:00Z",
+   "updated_at": "2026-01-15T09:00:00Z",
+   "labels": [],
+   "pull_request": {
+    "url": "x"
+   }
+  },
+  {
+   "number": 7,
+   "title": "Flaky test in CI",
+   "html_url": "https://github.com/acme/api/issues/7",
+   "repository_url": "https://api.github.com/repos/acme/api",
+   "user": {
+    "login": "dave"
+   },
+   "state": "open",
+   "created_at": "2026-01-10T09:00:00Z",
+   "updated_at": "2026-01-14T10:00:00Z",
+   "labels": [
+    {
+     "name": "bug"
+    }
+   ]
+  }
+ ]
+}

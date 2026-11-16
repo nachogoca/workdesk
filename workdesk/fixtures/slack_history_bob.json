@@ -1,0 +1,19 @@
+{
+ "ok": true,
+ "messages": [
+  {
+   "ts": "1768474800.000600",
+   "user": "U_BOB",
+   "text": "thanks!",
+   "reactions": [
+    {
+     "name": "+1",
+     "users": [
+      "U_ME"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

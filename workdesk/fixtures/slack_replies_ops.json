@@ -1,0 +1,15 @@
+{
+ "ok": true,
+ "messages": [
+  {
+   "ts": "1768460400.000300",
+   "user": "U_BOB",
+   "text": "<@U_ME> rollout is done, FYI"
+  },
+  {
+   "ts": "1768464000.000400",
+   "user": "U_ME",
+   "text": "thanks, saw it"
+  }
+ ]
+}

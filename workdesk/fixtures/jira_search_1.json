@@ -1,0 +1,57 @@
+{
+ "issues": [
+  {
+   "key": "MLP-101",
+   "fields": {
+    "summary": "Fix flaky checkout test",
+    "status": {
+     "name": "In Progress",
+     "statusCategory": {
+      "key": "indeterminate"
+     }
+    },
+    "priority": {
+     "name": "High"
+    },
+    "duedate": null,
+    "created": "2026-01-05T09:00:00.000+0100",
+    "updated": "2026-01-15T10:00:00.000+0100",
+    "labels": [],
+    "reporter": {
+     "displayName": "Dana Example"
+    },
+    "customfield_10020": [
+     {
+      "id": 12,
+      "name": "Sprint 12",
+      "state": "active"
+     }
+    ]
+   }
+  },
+  {
+   "key": "MLP-102",
+   "fields": {
+    "summary": "Waiting on vendor API keys",
+    "status": {
+     "name": "Blocked",
+     "statusCategory": {
+      "key": "indeterminate"
+     }
+    },
+    "priority": {
+     "name": "Medium"
+    },
+    "duedate": null,
+    "created": "2026-01-02T09:00:00.000+0100",
+    "updated": "2026-01-08T10:00:00.000+0100",
+    "labels": [],
+    "reporter": {
+     "displayName": "Erin Example"
+    },
+    "customfield_10020": null
+   }
+  }
+ ],
+ "nextPageToken": "tok2"
+}

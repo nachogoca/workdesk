@@ -128,7 +128,17 @@ def cmd_set(ctx, a):
     return 0
 
 
-HANDLERS = {"init": cmd_init, "list": cmd_list, "add": cmd_add, "done": cmd_done, "snooze": cmd_snooze,
+def cmd_sync(ctx, a):
+    from .sync import run_sync
+    res = run_sync(ctx.db, ctx.cfg, ctx.get_http(), ctx.env, ctx.now)
+    if not res:
+        print("no sources enabled (see config: enabled = true)")
+    for name, r in res.items():
+        print(f"{name}: {r['count']} items" if r["ok"] else f"{name}: FAILED {r['error']}")
+    return 0 if all(r["ok"] for r in res.values()) else 1
+
+
+HANDLERS = {"sync": cmd_sync, "init": cmd_init, "list": cmd_list, "add": cmd_add, "done": cmd_done, "snooze": cmd_snooze,
             "set": cmd_set}
 
 
@@ -137,6 +147,7 @@ def build_parser():
     p.add_argument("--demo", action="store_true", help="use fixtures and the demo database")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("init", help="write the example config")
+    sub.add_parser("sync", help="pull from all enabled sources")
     s = sub.add_parser("list", help="list items by rank")
     s.add_argument("--state", default="open", choices=["open", "done", "snoozed", "closed"])
     s.add_argument("--kind", choices=KINDS)
