@@ -259,6 +259,23 @@ def cmd_auth(ctx, a):
     return 0
 
 
+def cmd_today(ctx, a):
+    from . import brief, planner
+    from .sync import sync_if_stale
+    if not a.no_sync:
+        sync_if_stale(ctx.db, ctx.cfg, ctx.get_http(), ctx.env, ctx.now)
+    planner.plan(ctx.db, ctx.cfg, ctx.day, ctx.calendar, ctx.now)
+    data, text = brief.make(ctx.db, ctx.cfg, ctx.now, ctx.calendar)
+    print(brief.render_json(data) if a.json else text)
+    return 0
+
+
+def cmd_show(ctx, a):
+    from . import brief
+    print(brief.show_text(ctx.db, ctx.cfg, ctx.now, ctx.ref(a.ref)))
+    return 0
+
+
 def cmd_sync(ctx, a):
     from .sync import run_sync
     res = run_sync(ctx.db, ctx.cfg, ctx.get_http(), ctx.env, ctx.now)
@@ -269,7 +286,7 @@ def cmd_sync(ctx, a):
     return 0 if all(r["ok"] for r in res.values()) else 1
 
 
-HANDLERS = {"plan": cmd_plan, "auth": cmd_auth, "pomo": cmd_pomo, "sync": cmd_sync, "serve": cmd_serve, "demo": cmd_demo, "init": cmd_init, "list": cmd_list, "add": cmd_add, "done": cmd_done, "snooze": cmd_snooze,
+HANDLERS = {"today": cmd_today, "show": cmd_show, "plan": cmd_plan, "auth": cmd_auth, "pomo": cmd_pomo, "sync": cmd_sync, "serve": cmd_serve, "demo": cmd_demo, "init": cmd_init, "list": cmd_list, "add": cmd_add, "done": cmd_done, "snooze": cmd_snooze,
             "set": cmd_set}
 
 
@@ -289,6 +306,11 @@ def build_parser():
     s.add_argument("--ics", help="write accepted blocks of the day to this .ics file")
     s = sub.add_parser("auth", help="authorise an external service")
     s.add_argument("service", choices=["google"])
+    s = sub.add_parser("today", help="daily brief (plain text, at most 30 lines)")
+    s.add_argument("--no-sync", action="store_true", help="skip the sync even when data is stale")
+    s.add_argument("--json", action="store_true", help="same content as compact JSON")
+    s = sub.add_parser("show", help="full detail of one item (alias or id)")
+    s.add_argument("ref")
     s = sub.add_parser("serve", help="serve the web page")
     s.add_argument("--port", type=int)
     s = sub.add_parser("demo", help="rebuild the demo database from fixtures and serve it")
